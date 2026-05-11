@@ -1,0 +1,10 @@
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - chopper=0.12.0
+  - flye=2.9.6
+  - minimap2=2.30
+  - nanoplot=1.46.2
+  - python=3.13.13
+  - samtools=1.23.1

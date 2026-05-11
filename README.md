@@ -6,62 +6,45 @@
 
 *Done using an Apple Silicon Macbook (M2 chip), some of this code will still work in other operating systems, especially the Python code. Most, if not all, of the installation steps won't work on other OS.*
 
+The pipeline described in this tutorial requires that you are working 
+from a Unix-based command-line terminal. If your computer is running
+a modern Mac or Linux operating system then you should be able to follow
+all of these instructions without additional setup. If your computer is
+running Windows 10 or Windows 11, you can follow [these instructions from
+Microsoft to install the Windows Subsystem for Linux (WSL)](https://learn.microsoft.com/en-us/windows/wsl/install), which will install a Unix-based
+command-line terminal for Windows.
+
 ## Step 0: Installations
 
 ### Dorado
 
-A basecalling algorithm developed by ONT for decoding the raw electrical signals produced from sequencing, and translating them into nucleotide sequences. It also outputs a quality score for each base, which will be used later.
+A basecalling algorithm developed by ONT for decoding the raw electrical signals produced from sequencing, and translating them into nucleotide sequences. It also outputs a quality score for each base, which will be used later. [Follow these instructions to download the latest version of Dorado](https://software-docs.nanoporetech.com/dorado/1.4.0/#installation) for your operating system.
 
-1.  To download the latest version of Dorado, go to <https://nanoporetech.com/software/other/dorado> and select your operating system. If you don't have an account with ONT, you'll be prompted to create one before installing.
+### Mamba / Conda
 
-2.  Decompress the downloaded zip file
+[Mamba](https://mamba.readthedocs.io/en/latest/) is a reimplementation of
+the popular package management system [Conda](https://anaconda.org/channels/anaconda/packages/conda/overview), which is much faster and works with
+exactly the same code syntax.
 
-3.  Open terminal and navigate to the directory containing the file
+[Follow these directions to install mamba](https://github.com/conda-forge/miniforge#unix-like-platforms-macos-linux--wsl), in short:
 
-4.  To access Dorado from anywhere on the computer, move it to the local directory and add it to the configuration file:
+```{bash}
+curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
 
-``` bash
-sudo mv dorado-0.9.1-osx-arm64 /usr/local/dorado
-
-echo 'export PATH=/usr/local/dorado/bin:$PATH' >> ~/.zshrc
-
-source ~/.zshrc
+bash Miniforge3-$(uname)-$(uname -m).sh
 ```
 
-5.  run `dorado --version` to check that the installation was successful, this should work from any directory
+which will begin an interactive session to install mamba on your computer.
 
-### Homebrew
+Then, to set up the mamba environment and download all of the remaining
+programs we'll need for this pipeline, use the following command:
 
-An open-source package manager for macOS and Linux, it will help with the installation of packages like Samtools.
-
-1.  To install Homebrew, run:
-
-``` bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```{bash}
+mamba create -n bat_micro -e setup/bat-micro.yml
 ```
 
-2.  to check that installation was sucesfull, run `brew config`.
-
-### Samtools
-
-A program for interacting with high-throughput sequencing data, it is useful for reading, writing, editing, indexing and viewing data,
-
-1.  **After installing homebrew**, run:
-
-``` bash
-brew install samtools
-```
-
-2.  Check that installation was successful by running `samtools version`.
-
-### Conda
-
-Anaconda is a program that aids in Python programming, allowing for easy download of packages, it also includes Conda, which is an open-source manager.
-
-1.  To install it, go to <https://www.anaconda.com/download/success>, and select your operating system.
-2.  Execute the downloaded file, and follow the instructions of the installer.
-3.  Once downloaded, go to terminal. If installed correctly you should see `(base)` before the user and location information, this indicates that you are now in the base environment of conda, instead of the normal terminal
-4.  To exit out of conda run `conda deactivate`, and the `(base)` tag should dissapear. You are now back to the normal terminal. To go back into conda run `conda activate`.
+This will start an interactive series of prompts that will walk you
+through downloading all the necessary programs.
 
 #### Set up an environment
 
