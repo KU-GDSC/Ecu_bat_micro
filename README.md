@@ -26,21 +26,26 @@ A basecalling algorithm developed by ONT for decoding the raw electrical signals
 the popular package management system [Conda](https://anaconda.org/channels/anaconda/packages/conda/overview), which is much faster and works with
 exactly the same code syntax.
 
-[Follow these directions to install mamba](https://github.com/conda-forge/miniforge#unix-like-platforms-macos-linux--wsl), in short:
+[Follow these directions to install mamba](https://github.com/conda-forge/miniforge#unix-like-platforms-macos-linux--wsl).
+
+In short, first download the installation script:
 
 ```{bash}
 curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
-
-bash Miniforge3-$(uname)-$(uname -m).sh
 ```
 
-which will begin an interactive session to install mamba on your computer.
+And then run the installation script, which will begin an interactive session
+to install mamba on your computer.
+
+```{bash}
+bash Miniforge3-$(uname)-$(uname -m).sh
+```
 
 Then, to set up the mamba environment and download all of the remaining
 programs we'll need for this pipeline, use the following command:
 
 ```{bash}
-mamba create -n bat_micro -e setup/bat-micro.yml
+mamba create -n bat-micro -f setup/bat-micro.yml
 ```
 
 This will start an interactive series of prompts that will walk you
