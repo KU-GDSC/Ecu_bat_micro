@@ -8,3 +8,4 @@ dependencies:
   - nanoplot=1.46.2
   - python=3.13.13
   - samtools=1.23.1
+  - ncbi-datasets-cli=18.26.0
