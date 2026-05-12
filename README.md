@@ -1,10 +1,7 @@
 # Bioinformatics Pipeline for Bat Pathogens
 
-**DISCLAIMER: this code is nowhere near finished**
-
-*Identification from Host-Depleted Nanopore Sequencing Data (Optimized for bacterial detection of known human pathogens in bat tissues).*
-
-*Done using an Apple Silicon Macbook (M2 chip), some of this code will still work in other operating systems, especially the Python code. Most, if not all, of the installation steps won't work on other OS.*
+*Identification from Host-Depleted Nanopore Sequencing Data (Optimized for bacterial detection of 
+known human pathogens in bat tissues).*
 
 The pipeline described in this tutorial requires that you are working 
 from a Unix-based command-line terminal. If your computer is running
@@ -51,68 +48,19 @@ mamba create -n bat-micro -f setup/bat-micro.yml
 This will start an interactive series of prompts that will walk you
 through downloading all the necessary programs.
 
-#### Set up an environment
+The programs installed can now be accessed by activating the mamba environment
 
-`(base)` indicates that you are in the base environment of conda, this contains all available packages. Best practice is to never work in this base environment, but to make a new environment for each new project instead.
-
-1.  To create an environment, run `conda create --name example`.
-2.  Check all current environments by running: `conda env list`.
-3.  Activate an environment with: `conda activate example`.
-4.  See all packages inside the environment with: `conda list` (some packages come preinstalled).
-5.  To exit back to the base environment, run: `conda deactivate`.
-
-### Bioconda
-
-Bioconda is a package manager (or channel) that lets you install software packages related to biomedical research.
-
-1.  In the base environment, download Bioconda, as well as Conda Forge (needed for Bioconda to work)
-
-``` python
-conda config --add channels bioconda
-conda config --add channels conda-forge
+```{bash}
+mamba activate bat-micro
 ```
 
-2.  Make Conda strictly follow the order of channels when resolving dependencies, meaning it will first use the packages from bioconda and then the ones from conda forge. This prevents conda from looking for the same package in multiple channels.
+Note: you will need to activate the environment each time you open a new
+terminal window.
 
-``` python
-conda config --set channel_priority strict
-```
 
-### Minimap
+**UNREVISED BELOW**
 
-``` python
-conda activate example
-conda install -c bioconda minimap2
-```
-
-### 
-
-### NanoPlot
-
-Nanoplot is a plotting tool for long read sequencing data and alignments. Go to your working environment and install it:
-
-``` python
-conda activate example
-conda install -c bioconda nanoplot
-```
-
-### Chopper
-
-Chopper is a tool to filter and trim fastq files from long read sequencing technologies like ONT. Go to your working environment and install it:
-
-``` python
-conda activate example
-conda install -c bioconda chopper
-```
-
-### Flye
-
-Flye is a contig assembler developed for long read sequencing. We will mainly be using the metaFlye algorithm withing the Flye library, which is intended assembling metagenomic data with highly uneven coverage (Milkhail et al., 2020) (<https://doi.org/10.1038/s41592-020-00971-x>), and has been shown to work better that other assemblers (Latorre‑Pérez et al., 2020) (<https://doi.org/10.1038/s41598-020-70491-3>). To install Flye:
-
-``` python
-conda activate example
-conda install -c bioconda flye
-```
+---
 
 ## Step 1: Basecalling & Quality Control
 
