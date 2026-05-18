@@ -130,6 +130,7 @@ Then we use the [samtools flags](https://broadinstitute.github.io/picard/explain
 ```{bash}
 for i in $(seq -w 01 24)
   do
+    barcode="barcode${i}"
     samtools fastq -F 3588 reads/qc/${barcode}_host_aligned.bam > reads/qc/${barcode}_host.fastq
 done
 ```
@@ -139,6 +140,7 @@ as well as the reads that did not map to the host:
 ```{bash}
 for i in $(seq -w 01 24)
   do
+    barcode="barcode${i}"
     samtools fastq -F 3584 -f 4 reads/qc/${barcode}_host_aligned.bam > reads/qc/${barcode}_nonhost.fastq
 done
 ```
