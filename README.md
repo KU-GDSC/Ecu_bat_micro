@@ -57,26 +57,95 @@ mamba activate bat-micro
 Note: you will need to activate the environment each time you open a new
 terminal window.
 
-
-**UNREVISED BELOW**
-
----
-
 ## Step 1: Basecalling & Quality Control
 
 ### Basecalling
 
-1.  Loop through each barcode directory and convert raw Nanopore signals into DNA sequences using Dorado (WARNING: this step is very taxing on computer resources, it will take a long time to run on a normal computer. It is probably best to do this step on a cluster if you have access to one):
+This step can be very computationally expensive and time-consuming. 
 
-``` bash
-for i in $(seq -w 01 24)  # -w ensures leading zeros
-do
+```{bash}
+dorado basecaller sup@v5.2.0 pod5_pass/ --kit-name SQK-NBD114-24 --min-qscore 10 --recursive > bat_pathogen.bam
+```
+
+This process can be run substantially faster on a computer with GPU
+resources, in which case add the parameter `-x cuda:all` to the above
+command before `> mepa_pathogens.bam`.
+
+For comparison, basecalling on these data completed in 2.5 hours using
+GPUs on a high-performance computing cluster with 128G of memory and 10
+CPUs.
+
+### Demultiplexing
+
+The basecalled BAM file contains data from all samples, this command
+will demultiplex the base calls into FASTQ files separately by barcode:
+
+```{bash}
+dorado demux --kit-name SQK-NBD114-24 mepa_pathogens.bam -o mepa_pathogens_v5.2.0 --emit-fastq --emit-summary
+```
+
+The resulting directory structure is a bit cumbersome, so we can make
+some links to the FASTQ data for convenience:
+
+```{bash}
+mkdir -p reads/qc
+pushd reads
+for `i in ../mepa_pathogens_v5.2.0`; do ln -s ${i} .; done
+popd
+```
+
+### Host Sequence Filtering
+
+Even though our data was generated using host-depleted sequencing,
+the host genome can still make it through. Because of this, it is
+necessary to remove these sequences before proceeding. For this we
+will be using the latest reference genome of *Desmodus rotundus*.
+
+#. Download the reference genome from NCBI
+
+```{bash}
+datasets download genome accession GCF_022682495.2 --include gff3,rna,cds,protein,genome,seq-report
+```
+
+#. Decompress the reference data file
+
+```{bash}
+unzip ncbi_data.zip
+```
+
+#. Filter the read data using minimap2 and samtools [following a method described at this link](https://linsalrob.github.io/ComputationalGenomicsManual/Deconseq/).
+
+First we align the reads for each barcode to the *Desmodus rotundus* genome
+
+```{bash}
+for i in $(seq -w 01 24)
+  do
     barcode="barcode${i}"
-    dorado basecaller dna_r10.4.1_e8.2_400bps_sup@v5.0.0 "pod5_pass/$barcode/" > "dorado_sup_out/${barcode}.bam"
+    minimap2 --split-prefix=tmp$$ -a -xsr ncbi_dataset/data/GCF_022682495.2/GCF_022682495.2_HLdesRot8A.1_genomic.fna reads/FAZ94206_pass_${barcode}_1608bcd0_00000000_0.fastq | samtools view -bh | samtools sort -o reads/qc/${barcode}_host_aligned.bam
 done
 ```
 
-`dna_r10.4.1_e8.2_400bps_sup@v5.0.0` is the version of the basecaller to use, pod5 can give dorado the kind of basecalling model to use, but it can be good to specify the model, specially if using fastq files (which don't contain this information).
+Then we use the [samtools flags](https://broadinstitute.github.io/picard/explain-flags.html) to filter the reads that mapped to the host:
+
+```{bash}
+for i in $(seq -w 01 24)
+  do
+    samtools fastq -F 3588 reads/qc/${barcode}_host_aligned.bam > reads/qc/${barcode}_host.fastq
+done
+```
+
+as well as the reads that did not map to the host:
+
+```{bash}
+for i in $(seq -w 01 24)
+  do
+    samtools fastq -F 3584 -f 4 reads/qc/${barcode}_host_aligned.bam > reads/qc/${barcode}_nonhost.fastq
+done
+```
+
+**UNREVISED BELOW**
+
+---
 
 Each individual base-call is accompanied by another character which indicate the error probability for that base-call, called the Phred Quality score, which is calculated with the following formula:
 
@@ -94,25 +163,6 @@ Remember to replace the `barcodexx.bam` with your file-name.
 
 add the bash script to run in the cluster. Add notes
 
-### Host Sequence Filtering
-
-Even though our data was generated using host-depleted sequencing, the host genome can still make it through. Because of this, it is necessary to remove these sequences before proceeding. For this we will be using the latest reference genome of *Desmodus rotundus*.
-
-leave this as an example for one and then add the real process for multiple host species
-
-1.  download the reference genome from NCBI
-
-``` bash
-datasets download genome
-accession GCF_022682495.2 --include
-gff3,rna,cds,protein,genome,seq-report
-```
-
-2.  filter using minimap and samtools <https://linsalrob.github.io/ComputationalGenomicsManual/Deconseq/>
-
-``` bash
-minimap2 --split-prefix=tmp$$ -a -xsr GCA_000001405.15_GRCh38_no_alt_plus_hs38d1_analysis_set.fna.gz R1.fastq.gz R2.fastq.gz | samtools view -bh | samtools sort -o output.bam
-```
 
 ### Data Visualization
 
