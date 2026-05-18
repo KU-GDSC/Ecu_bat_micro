@@ -107,13 +107,13 @@ will be using the latest reference genome of *Desmodus rotundus*.
 datasets download genome accession GCF_022682495.2 --include gff3,rna,cds,protein,genome,seq-report
 ```
 
-1. Decompress the reference data file
+2. Decompress the reference data file
 
 ```{bash}
 unzip ncbi_data.zip
 ```
 
-1. Filter the read data [following a method described at this link](https://linsalrob.github.io/ComputationalGenomicsManual/Deconseq/).
+3. Filter the read data [following a method described at this link](https://linsalrob.github.io/ComputationalGenomicsManual/Deconseq/).
 
 First we align the reads for each barcode to the *Desmodus rotundus* genome
 
