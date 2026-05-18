@@ -101,19 +101,19 @@ the host genome can still make it through. Because of this, it is
 necessary to remove these sequences before proceeding. For this we
 will be using the latest reference genome of *Desmodus rotundus*.
 
-#. Download the reference genome from NCBI
+1. Download the reference genome from NCBI
 
 ```{bash}
 datasets download genome accession GCF_022682495.2 --include gff3,rna,cds,protein,genome,seq-report
 ```
 
-#. Decompress the reference data file
+1. Decompress the reference data file
 
 ```{bash}
 unzip ncbi_data.zip
 ```
 
-#. Filter the read data using minimap2 and samtools [following a method described at this link](https://linsalrob.github.io/ComputationalGenomicsManual/Deconseq/).
+1. Filter the read data [following a method described at this link](https://linsalrob.github.io/ComputationalGenomicsManual/Deconseq/).
 
 First we align the reads for each barcode to the *Desmodus rotundus* genome
 
