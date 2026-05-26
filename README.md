@@ -64,12 +64,12 @@ terminal window.
 This step can be very computationally expensive and time-consuming. 
 
 ```{bash}
-dorado basecaller sup@v5.2.0 pod5_pass/ --kit-name SQK-NBD114-24 --min-qscore 10 --recursive > bat_pathogen.bam
+dorado basecaller sup@v5.2.0 pod5_pass/ --kit-name SQK-NBD114-24 --min-qscore 10 --recursive > mepa_pathogens_v5.2.0.bam
 ```
 
 This process can be run substantially faster on a computer with GPU
 resources, in which case add the parameter `-x cuda:all` to the above
-command before `> mepa_pathogens.bam`.
+command before `> mepa_pathogens_v5.2.0.bam`.
 
 For comparison, basecalling on these data completed in 2.5 hours using
 GPUs on a high-performance computing cluster with 128G of memory and 10
@@ -78,10 +78,12 @@ CPUs.
 ### Demultiplexing
 
 The basecalled BAM file contains data from all samples, this command
-will demultiplex the base calls into FASTQ files separately by barcode:
+will demultiplex the base calls into FASTQ files separately by barcode
+(note: the `--no-classify` parameter is used because the barcodes were
+identified in the previous step, and trimmed)
 
 ```{bash}
-dorado demux --kit-name SQK-NBD114-24 mepa_pathogens.bam -o mepa_pathogens_v5.2.0 --emit-fastq --emit-summary
+dorado demux mepa_pathogens_v5.2.0.bam -o mepa_pathogens_v5.2.0 --emit-fastq --emit-summary --no-classify
 ```
 
 The resulting directory structure is a bit cumbersome, so we can make
