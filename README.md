@@ -92,7 +92,7 @@ some links to the FASTQ data for convenience:
 ```{bash}
 mkdir -p reads/qc
 pushd reads
-for `i in ../mepa_pathogens_v5.2.0`; do ln -s ${i} .; done
+for i in `find ../mepa_pathogens_v5.2.0 -name "*.fastq"`; do ln -s ${i} .; done
 popd
 ```
 
