@@ -61,15 +61,33 @@ terminal window.
 
 ### Basecalling
 
-This step can be very computationally expensive and time-consuming. 
+This step can be very computationally expensive and time-consuming.
+
+We will first define three variables, `${POD5DIR}` is the directory
+that contains the `.pod5` files containing the Oxford Nanopore
+sequence data, `${KITNAME}` is the barcoding kit used to prepare
+the libraries, and `${OUTPUT}` will be used to name output files
+and directories for the basecalls and demultiplexed data.
+
+**These will differ between projects, and the examples below should
+be modified to reflect your own data.**
 
 ```{bash}
-dorado basecaller sup@v5.2.0 pod5_pass/ --kit-name SQK-NBD114-24 --min-qscore 10 --recursive > mepa_pathogens_v5.2.0.bam
+POD5DIR=pod5_pass
+KITNAME=SQK-NBD114-24
+OUTPUT=mepa_pathogens
+```
+
+The following command will use the "super accurate" basecalling
+model v5.2.0
+
+```{bash}
+dorado basecaller sup@v5.2.0 pod5_pass/ --kit-name ${KITNAME} --min-qscore 10 --recursive > ${OUTPUT}_v5.2.0.bam
 ```
 
 This process can be run substantially faster on a computer with GPU
 resources, in which case add the parameter `-x cuda:all` to the above
-command before `> mepa_pathogens_v5.2.0.bam`.
+command before `> ${OUTPUT}_v5.2.0.bam`.
 
 For comparison, basecalling on these data completed in 2.5 hours using
 GPUs on a high-performance computing cluster with 128G of memory and 10
@@ -83,68 +101,62 @@ will demultiplex the base calls into FASTQ files separately by barcode
 identified in the previous step, and trimmed)
 
 ```{bash}
-dorado demux mepa_pathogens_v5.2.0.bam -o mepa_pathogens_v5.2.0 --emit-fastq --emit-summary --no-classify
-```
-
-The resulting directory structure is a bit cumbersome, so we can make
-some links to the FASTQ data for convenience:
-
-```{bash}
-mkdir -p reads/qc
-pushd reads
-for i in `find ../mepa_pathogens_v5.2.0 -name "*.fastq"`; do ln -s ${i} .; done
-popd
+dorado demux ${OUTPUT}_v5.2.0.bam -o ${OUTPUT}_v5.2.0 --emit-fastq --emit-summary --no-classify
 ```
 
 ### Host Sequence Filtering
 
 Even though our data was generated using host-depleted sequencing,
 the host genome can still make it through. Because of this, it is
-necessary to remove these sequences before proceeding. For this we
-will be using the latest reference genome of *Desmodus rotundus*.
+necessary to remove these sequences before proceeding. We use the
+list of accession numbers from the sample sheet to download the
+reference genomes for read alignment.
 
-1. Download the reference genome from NCBI
+1. Prepare list of accession numbers to download
 
 ```{bash}
-datasets download genome accession GCF_022682495.2 --include gff3,rna,cds,protein,genome,seq-report
+cut -f 4 -d ',' sample_sheet.csv  | tail -n +2 | sort | uniq > ref_accessions.txt
 ```
 
-2. Decompress the reference data file
+2. Download the reference genomes from NCBI
+
+```{bash}
+datasets download genome accession --inputfile ref_accessions.txt
+```
+
+3. Decompress the reference data files
 
 ```{bash}
 unzip ncbi_data.zip
 ```
 
-3. Filter the read data [following a method described at this link](https://linsalrob.github.io/ComputationalGenomicsManual/Deconseq/).
+4. Filter the read data [following a method described at this link](https://linsalrob.github.io/ComputationalGenomicsManual/Deconseq/).
 
-First we align the reads for each barcode to the *Desmodus rotundus* genome
+First we align the reads for each barcode to the host genome listed in `sample_sheet.csv`. Following
+alignment the [samtools flags](https://broadinstitute.github.io/picard/explain-flags.html) to
+filter the reads that mapped to the host (`reads/qc/${BARCODE}_host.fastq`) and those that did 
+not map to the host (`reads/${BARCODE}_nonhost.fastq`).  
 
 ```{bash}
-for i in $(seq -w 01 24)
-  do
-    barcode="barcode${i}"
-    minimap2 --split-prefix=tmp$$ -a -xsr ncbi_dataset/data/GCF_022682495.2/GCF_022682495.2_HLdesRot8A.1_genomic.fna reads/FAZ94206_pass_${barcode}_1608bcd0_00000000_0.fastq | samtools view -bh | samtools sort -o reads/qc/${barcode}_host_aligned.bam
-done
+mkdir -p reads/qc
+while read -r LINE;
+do
+    BARCODE=$(echo $LINE | cut -f 1 -d ',')
+    FASTQ=$(find . -name "*_${BARCODE}_*.fastq")
+    ACCESSION=$(echo $LINE | cut -f 4 -d ',' | tr -d '\r\n')
+    REFERENCE=$(find . -name "${ACCESSION}*.fna")
+    minimap2 --split-prefix=tmp$$ -a -xsr ${REFERENCE} ${FASTQ} | samtools view -bh | samtools sort -o reads/qc/${BARCODE}_host_aligned.bam
+    samtools fastq -F 3588 reads/qc/${BARCODE}_host_aligned.bam > reads/qc/${BARCODE}_host.fastq
+    samtools fastq -F 3584 -f 4 reads/qc/${BARCODE}_host_aligned.bam > reads/${BARCODE}_nonhost.fastq
+done < sample_sheet.csv
 ```
 
-Then we use the [samtools flags](https://broadinstitute.github.io/picard/explain-flags.html) to filter the reads that mapped to the host:
+### Read classification
 
 ```{bash}
-for i in $(seq -w 01 24)
-  do
-    barcode="barcode${i}"
-    samtools fastq -F 3588 reads/qc/${barcode}_host_aligned.bam > reads/qc/${barcode}_host.fastq
-done
-```
+KRAKEN_DB=/path/to/db
 
-as well as the reads that did not map to the host:
-
-```{bash}
-for i in $(seq -w 01 24)
-  do
-    barcode="barcode${i}"
-    samtools fastq -F 3584 -f 4 reads/qc/${barcode}_host_aligned.bam > reads/qc/${barcode}_nonhost.fastq
-done
+kraken2 --db ${KRAKEN_DB} --report ${BARCODE}_bacteria_report.txt --output ${BARCODE}_bacteria_classified.txt --use-names reads/${BARCODE}_nonhost.fastq
 ```
 
 **UNREVISED BELOW**
