@@ -149,8 +149,6 @@ done < sample_sheet.csv
 Next, iterate through these arrays and map the reads to the host genome
 
 ```{bash}
-mkdir -p reads/qc
-
 for i in ${!BARCODE[@]};
     do minimap2 --split-prefix=tmp$$ -a -xsr ${REFERENCE[i]} ${FASTQ[i]} | samtools view -bh | samtools sort -o reads/qc/${BARCODE[i]}_host_aligned.bam
 done
@@ -160,8 +158,9 @@ not map to the host (`reads/${BARCODE}_nonhost.fastq`).
 
 ```{bash}
 for i in ${!BARCODE[@]};
-    samtools fastq -F 3588 reads/qc/${BARCODE[i]}_host_aligned.bam > reads/qc/${BARCODE[i]}_host.fastq
+    do samtools fastq -F 3588 reads/qc/${BARCODE[i]}_host_aligned.bam > reads/qc/${BARCODE[i]}_host.fastq
     samtools fastq -F 3584 -f 4 reads/qc/${BARCODE[i]}_host_aligned.bam > reads/${BARCODE[i]}_nonhost.fastq
+done
 ```
 
 ### Read classification using kraken2
