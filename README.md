@@ -170,9 +170,9 @@ classification for FASTQ read data. It requires a database in order to perform t
 and there are a [large number of options available here](https://benlangmead.github.io/aws-indexes/k2).
 
 For the purposes of this tutorial we will download the Standard database, which includes sequences
-for archaea, bacteria, viruses, plasmids, and human. The full database is quite large, but there is
-a smaller version (Standard-8) that is capped at 8 GB and should be sufficient for our purposes.
-(https://genome-idx.s3.amazonaws.com/kraken/k2_standard_08_GB_20260226.tar.gz)
+for archaea, bacteria, viruses, plasmids, and human. The full database is quite large, [but there is
+a smaller version (Standard-8)](https://genome-idx.s3.amazonaws.com/kraken/k2_standard_08_GB_20260226.tar.gz) that is capped at 8 GB and should be sufficient for our purposes.
+
 
 Download and extract database files
 
