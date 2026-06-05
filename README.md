@@ -187,7 +187,9 @@ tar -C kraken_db/ -xvf kraken_db/k2_standard_08_GB_20260226.tar.gz
 Now iterate through the FASTQ files and classify them with kraken2
 
 ```{bash}
+mkdir -p kraken_results
+
 for i in ${!BARCODE[@]};
-    do kraken2 --db kraken_db --report ${BARCODE[i]_kraken2_report.txt --output ${BARCODE[i]_kraken2_classified.txt --use-names reads/${BARCODE[i]_nonhost.fastq
+    do k2 classify --db kraken_db --report kraken_results/${BARCODE[i]}_kraken2_report.txt --output kraken_results/${BARCODE[i]}_kraken2_classified.txt --use-names reads/${BARCODE[i]}_nonhost.fastq
 done
 ```
