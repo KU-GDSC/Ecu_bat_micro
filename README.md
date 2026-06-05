@@ -132,303 +132,63 @@ unzip ncbi_data.zip
 
 4. Filter the read data [following a method described at this link](https://linsalrob.github.io/ComputationalGenomicsManual/Deconseq/).
 
-First we align the reads for each barcode to the host genome listed in `sample_sheet.csv`. Following
-alignment the [samtools flags](https://broadinstitute.github.io/picard/explain-flags.html) to
-filter the reads that mapped to the host (`reads/qc/${BARCODE}_host.fastq`) and those that did 
-not map to the host (`reads/${BARCODE}_nonhost.fastq`).  
+First create a new directory and then create some arrays to store the values for `BARCODE` and `ACCESSION` from `sample_sheet.csv`, and find the corresponding `FASTQ` and `REFERENCE` files n the reads for each barcode to the host genome listed in `sample_sheet.csv`.   
 
 ```{bash}
 mkdir -p reads/qc
+index=0
 while read -r LINE;
-do
-    BARCODE=$(echo $LINE | cut -f 1 -d ',')
-    FASTQ=$(find . -name "*_${BARCODE}_*.fastq")
-    ACCESSION=$(echo $LINE | cut -f 4 -d ',' | tr -d '\r\n')
-    REFERENCE=$(find . -name "${ACCESSION}*.fna")
-    minimap2 --split-prefix=tmp$$ -a -xsr ${REFERENCE} ${FASTQ} | samtools view -bh | samtools sort -o reads/qc/${BARCODE}_host_aligned.bam
-    samtools fastq -F 3588 reads/qc/${BARCODE}_host_aligned.bam > reads/qc/${BARCODE}_host.fastq
-    samtools fastq -F 3584 -f 4 reads/qc/${BARCODE}_host_aligned.bam > reads/${BARCODE}_nonhost.fastq
+    do BARCODE[index]=$(echo $LINE | cut -f 1 -d ',');
+    FASTQ[index]=$(find . -name "*_${BARCODE[index]}_*.fastq");
+    ACCESSION[index]=$(echo $LINE | cut -f 4 -d ',' | tr -d '\r\n');
+    REFERENCE[index]=$(find . -name "${ACCESSION[index]}*.fna");
+    let "index++"
 done < sample_sheet.csv
 ```
 
-### Read classification
+Next, iterate through these arrays and map the reads to the host genome
 
 ```{bash}
-KRAKEN_DB=/path/to/db
+mkdir -p reads/qc
 
-kraken2 --db ${KRAKEN_DB} --report ${BARCODE}_bacteria_report.txt --output ${BARCODE}_bacteria_classified.txt --use-names reads/${BARCODE}_nonhost.fastq
-```
-
-**UNREVISED BELOW**
-
----
-
-Each individual base-call is accompanied by another character which indicate the error probability for that base-call, called the Phred Quality score, which is calculated with the following formula:
-
-Q = −10 × log10 p
-
-Where p represents the estimated error probability. For example, a base-call with a Q score of 20 would have a probability of 1/100 of being incorrect. For a more in-depth explanation on this, read Ewing & Green (1998) (<http://genome.cshlp.org/cgi/pmidlookup?view=long&pmid=9521922>)
-
-2.  To check any of the generated BAM files, run:
-
-``` bash
-samtools head -n 100 barcodexx.bam
-```
-
-Remember to replace the `barcodexx.bam` with your file-name.
-
-add the bash script to run in the cluster. Add notes
-
-
-### Data Visualization
-
-3.  In order to clean up the data, first look into the quality of the reads, as well as their length, this can be done with NanoPlot. This package prefers fastq files, so first transform them using samtools:
-
-``` bash
-for i in $(seq -w 01 24)
-  do
-    barcode="barcode${i}"
-    samtools fastq dorado_sup_out/barcode${i}.bam > samtools_fastq_out/barcode${i}.fastq
+for i in ${!BARCODE[@]};
+    do minimap2 --split-prefix=tmp$$ -a -xsr ${REFERENCE[i]} ${FASTQ[i]} | samtools view -bh | samtools sort -o reads/qc/${BARCODE[i]}_host_aligned.bam
 done
 ```
+Following alignment we use the [samtools flags](https://broadinstitute.github.io/picard/explain-flags.html) to filter the reads that mapped to the host (`reads/qc/${BARCODE}_host.fastq`) and those that did 
+not map to the host (`reads/${BARCODE}_nonhost.fastq`).
 
-4.  Now, use NanoPlot to generate a report for each barcode:
+```{bash}
+for i in ${!BARCODE[@]};
+    samtools fastq -F 3588 reads/qc/${BARCODE[i]}_host_aligned.bam > reads/qc/${BARCODE[i]}_host.fastq
+    samtools fastq -F 3584 -f 4 reads/qc/${BARCODE[i]}_host_aligned.bam > reads/${BARCODE[i]}_nonhost.fastq
+```
 
-``` python
-for i in $(seq -w 01 24)
-  do
-    NanoPlot -t 8 --fastq samtools_fastq_out/barcode${i}.fastq --loglength --plots kde --title barcode${i} -o nanoplot_out/barcode${i}
+### Read classification using kraken2
+
+[kraken2](https://github.com/DerrickWood/kraken2) is a program that provides taxonomic
+classification for FASTQ read data. It requires a database in order to perform this classification,
+and there are a [large number of options available here](https://benlangmead.github.io/aws-indexes/k2).
+
+For the purposes of this tutorial we will download the Standard database, which includes sequences
+for archaea, bacteria, viruses, plasmids, and human. The full database is quite large, but there is
+a smaller version (Standard-8) that is capped at 8 GB and should be sufficient for our purposes.
+(https://genome-idx.s3.amazonaws.com/kraken/k2_standard_08_GB_20260226.tar.gz)
+
+Download and extract database files
+
+```{bash}
+mkdir -p kraken_db
+
+wget https://genome-idx.s3.amazonaws.com/kraken/k2_standard_08_GB_20260226.tar.gz -O kraken_db/k2_standard_08_GB_20260226.tar.gz
+
+tar -C kraken_db/ -xvf kraken_db/k2_standard_08_GB_20260226.tar.gz
+```
+
+Now iterate through the FASTQ files and classify them with kraken2
+
+```{bash}
+for i in ${!BARCODE[@]};
+    do kraken2 --db kraken_db --report ${BARCODE[i]_kraken2_report.txt --output ${BARCODE[i]_kraken2_classified.txt --use-names reads/${BARCODE[i]_nonhost.fastq
 done
 ```
-
-`-t 8` makes the package run in eight threads, this can speed up the process with more powerful gpus.
-
-`--fastq samtools_fastq_out/barcode${i}.fastq` gives the file type and the file name.
-
-`--loglength` puts read lengths on a logarithmic scale.
-
-`kde` creates a kernel density estimate plot (kde plot), which is a method for visualizing the distribution of the data, similar to a histogram (<https://seaborn.pydata.org/generated/seaborn.kdeplot.html>).
-
-`--title barcode${i}` Puts the title on all plots.
-
-`-o nanoplot_out/barcode${i}` puts all generated graphs in this directory.
-
-### Data Cleaning
-
-5.  Remove short and low-quality reads using chopper:
-
-``` python
-for i in $(seq -w 01 24)
-  do
-chopper --threads 8 -q 20 -l 20 -i samtools_filter_out/barcode${i}.fastq > chopper_out/barcode${i}_filtered.fastq
-done
-```
-
-`--threads 8` makes the package run in eight threads, this can speed up the process with more powerful gpus.
-
-`-q 20` sets the minimum Phred Quality Score to 20. Any sequence with an average score below this will get removed.
-
-`-l 20` sets the minimum read length to 20bp.
-
-`-i samtools_fastq_out/barcode${i}.fastq` tells the package the name of the file to filter.
-
-## Step 2: Taxonomic Classification (UTI Pathogen Focus)
-
-### De-novo Assembly
-
-1.  Assemble contigs using metaFlye (WARNING: this step is relatively taxing on computer resources, it might take a while to run the command):
-
-``` python
-for i in $(seq -w 01 24)
-  do
-    barcode="barcode${i}"
-flye --meta --read-error 0.03 --nano-hq chopper_out/barcode${i}_filtered.fastq --out-dir flye_out/barcode${i} --threads 8
-done
-```
-
-`--meta` activates metaFlye mode.
-
-`--read-error 0.03` specifies that data has already been filtered to Q20 (in step 1.5.).
-
-`--nano-hq` specifies that the data was basecalled using Dorado's super accurate mode (in step 1.1.).
-
-`chopper_out/barcode${i}_filtered.fastq` tells the package the name of the file to assemble.
-
-`--out-dirflye_out/barcode${i}` specifies the output directory
-
-`--threads 8` makes the package run in eight threads, this can speed up the process with more powerful gpus.
-
-2.  Extract the assemblies from their enclosing folders:
-
-``` python
-for i in $(seq -w 01 24)
-  do
-    barcode="barcode${i}"
-    assembly="assembly{i}"
-cp flye_out/barcode${i}/assembly.fasta flye_assembly/assembly${i}.fasta
-cp flye_out/barcode${i}/assembly_info.txt flye_assembly/assembly${i}_info.txt
-done
-```
-
-### UTI Identification
-
-Use Kraken2, Centrifuge, or Kaiju for taxonomic assignment:
-
-``` console
-bash
-Copy
-Edit
-kraken2 --db kraken_db --threads 8 --report bacteria_report.txt --output bacteria_classified.txt --use-names filtered.fastq
-```
-
-#### Key UTI Pathogens to Check For:
-
--   *Escherichia coli* (UPEC - Uropathogenic *E. coli*)
--   *Klebsiella pneumoniae*
--   *Proteus mirabilis*
--   *Enterococcus faecalis*
--   *Staphylococcus saprophyticus*
--   *Pseudomonas aeruginosa*
--   *Morganella morganii*
-
-### Visualization of UTI Pathogens
-
-Generate interactive taxonomic plots using KronaTools.
-
-``` console
-bash
-Copy
-Edit
-cut -f2,3 bacteria_classified.txt | ktImportTaxonomy -o bacteria_krona.html
-```
-
-## Step 3: UTI Pathogen Confirmation & Functional Annotation
-
-### Targeted UTI Pathogen Screening
-
-Use MetaPhlAn or PathoScope to refine UTI pathogen detection.
-
-``` console
-bash
-Copy
-Edit
-metaphlan filtered.fastq --input_type fastq -o pathogen_abundance.txt
-```
-
-Alternative: Check for pathogenic UTI genes using MASH screen.
-
-``` console
-bash
-Copy
-Edit
-mash screen -w -i 0.9 UTI_reference_db.msh filtered.fastq > mash_results.txt
-```
-
-### Antimicrobial Resistance (AMR) Screening for UTI Bacteria
-
-Use ResFinder or CARD (Comprehensive Antibiotic Resistance Database).
-
-``` console
-bash
-Copy
-Edit
-rgi main --input_sequence filtered.fastq --output rgi_output.txt --aligner DIAMOND --local
-```
-
-#### Look for AMR genes common in UTI pathogens, such as:
-
--   **Beta-lactam resistance**: *blaCTX-M, blaTEM, blaSHV*
--   **Fluoroquinolone resistance**: *gyrA, parC*
--   **Aminoglycoside resistance**: *aac(6')-Ib*
--   **Sulfonamide resistance**: *sul1, sul2*
-
-### Virulence Factor Detection for UTI Pathogens
-
-Use ABRICATE with the VFDB (Virulence Factor Database).
-
-``` console
-bash
-Copy
-Edit
-abricate --db vfdb filtered.fastq > virulence_report.txt
-```
-
-#### Key virulence genes in UTI bacteria to look for:
-
--   *Escherichia coli* (*fimH, papG, sfa, iroN*)
--   *Proteus mirabilis* (*hpmA, mrpA*)
--   *Klebsiella pneumoniae* (*rmpA, yersiniabactin*)
-
-## Step 4: Bacterial Genome Assembly & UTI Pathogen Strain Analysis
-
-### De Novo Assembly of UTI Pathogen Genomes
-
-Use Flye for assembling long-read bacterial genomes.
-
-``` console
-bash
-Copy
-Edit
-flye --nano-raw filtered.fastq --out-dir assembly_output --genome-size 5m
-```
-
-### Polishing Assembly to Improve Accuracy
-
-Use Medaka for error correction.
-
-``` console
-bash
-Copy
-Edit
-medaka_consensus -i filtered.fastq -d assembly_output/assembly.fasta -o polished_assembly
-```
-
-### Confirm UTI Pathogen Identity via BLAST
-
-Align assembled genomes to NCBI’s bacterial reference database.
-
-``` console
-bash
-Copy
-Edit
-blastn -query polished_assembly/consensus.fasta -db nt -out blast_results.txt -outfmt 6
-```
-
-## Step 5: Phylogenetics & Comparative Genomics for UTI Pathogens
-
-### Phylogenetic Placement of UTI Bacteria
-
-Use Mashtree to analyze evolutionary relationships.
-
-``` console
-bash
-Copy
-Edit
-mashtree --numcpus 4 polished_assembly/*.fasta > phylogeny_tree.nwk
-```
-
-### Comparative Genomics for UTI Pathogens
-
-Use Roary or Panaroo for pan-genome analysis.
-
-``` console
-bash
-Copy
-Edit
-roary -e -n -v *.gff
-```
-
-## Key Additions for UTI Pathogen Analysis
-
-✅ Focus on key UTI bacteria (*E. coli, Klebsiella, Proteus*, etc.)\
-✅ Detect antimicrobial resistance genes relevant to UTI treatment\
-✅ Identify virulence genes involved in UTI pathogenesis\
-✅ Ensure accurate pathogen strain identification
-
-## Final Outputs
-
--   List of UTI pathogens present in the sample\
--   AMR profile of identified bacteria\
--   Virulence factor annotations\
--   Assembled bacterial genomes\
--   Phylogenetic relationships of UTI-causing bacteria
